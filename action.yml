@@ -1,0 +1,54 @@
+name: 'QuantumGuard PQC Scanner'
+description: 'Privacy-first Post-Quantum Cryptography vulnerability scanner and auto-remediator.'
+author: 'QuantumGuard'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  license_key:
+    description: 'QuantumGuard License Key (from SaaS Dashboard)'
+    required: true
+  target_dir:
+    description: 'Directory to scan'
+    required: false
+    default: '.'
+  saas_url:
+    description: 'QuantumGuard SaaS Backend URL'
+    required: false
+    default: 'https://quantum-guard-cli-backend.onrender.com'
+
+  auto_remediate:
+    description: 'Automatically rewrite legacy code'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install QuantumGuard
+      shell: bash
+      run: |
+        echo "Installing QuantumGuard CLI..."
+        pip install --upgrade pip
+        pip install ${{ github.action_path }}/dist/quantumguard-1.0.1-py3-none-any.whl
+
+    - name: Run Scan or Remediation
+      shell: bash
+      env:
+        QUANTUMGUARD_LICENSE_KEY: ${{ inputs.license_key }}
+        QUANTUMGUARD_SAAS_URL: ${{ inputs.saas_url }}
+      run: |
+        set +o pipefail
+        if [ "${{ inputs.auto_remediate }}" = "true" ]; then
+          echo "Executing QuantumGuard Auto-Remediation..."
+          yes 2>/dev/null | quantumguard remediate local ${{ inputs.target_dir }}
+        else
+          echo "Executing QuantumGuard PQC Scan..."
+          quantumguard scan ${{ inputs.target_dir }}
+        fi
